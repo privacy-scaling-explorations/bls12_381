@@ -228,7 +228,8 @@ impl Fp {
         res
     }
 
-    pub(crate) fn random(mut rng: impl RngCore) -> Fp {
+    /// Generates a new uniformly-distributed random element using the given randomness.
+    pub fn random(mut rng: impl RngCore) -> Fp {
         let mut bytes = [0u8; 96];
         rng.fill_bytes(&mut bytes);
 
