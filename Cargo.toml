@@ -41,6 +41,10 @@ optional = true
 version = "0.13"
 default-features = false
 
+[dependencies.pasta_curves]
+version = "0.5"
+features = ["alloc"]
+
 [dependencies.group]
 version = "0.13"
 default-features = false

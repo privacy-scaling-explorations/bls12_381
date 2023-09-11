@@ -14,6 +14,8 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 #[cfg(feature = "alloc")]
 use group::WnafGroup;
 
+use pasta_curves::arithmetic::CurveExt;
+
 use crate::fp::Fp;
 use crate::Scalar;
 
@@ -586,6 +588,8 @@ impl<'a, 'b> Mul<&'b G1Affine> for &'a Scalar {
         rhs * self
     }
 }
+
+impl CurveExt for G1Projective {}
 
 impl_binops_additive!(G1Projective, G1Projective);
 impl_binops_multiplicative!(G1Projective, Scalar);
