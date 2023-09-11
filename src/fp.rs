@@ -7,10 +7,11 @@ use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use crate::util::{adc, mac, sbb};
-
-// The internal representation of this type is six 64-bit unsigned
-// integers in little-endian order. `Fp` values are always in
-// Montgomery form; i.e., Scalar(a) = aR mod p, with R = 2^384.
+/// Represents an element of the base field $\mathbb{F}_p$ of the BLS12-381 elliptic
+/// curve construction.
+/// The internal representation of this type is six 64-bit unsigned
+/// integers in little-endian order. `Fp` values are always in
+/// Montgomery form; i.e., Scalar(a) = aR mod p, with R = 2^384.
 #[derive(Copy, Clone)]
 pub struct Fp(pub(crate) [u64; 6]);
 
@@ -170,6 +171,7 @@ impl Fp {
         R
     }
 
+    /// Checks if a value is equal to zero in constant time.
     pub fn is_zero(&self) -> Choice {
         self.ct_eq(&Fp::zero())
     }
@@ -226,7 +228,8 @@ impl Fp {
         res
     }
 
-    pub(crate) fn random(mut rng: impl RngCore) -> Fp {
+    /// Generates a new uniformly-distributed random element using the given randomness.
+    pub fn random(mut rng: impl RngCore) -> Fp {
         let mut bytes = [0u8; 96];
         rng.fill_bytes(&mut bytes);
 
@@ -321,12 +324,14 @@ impl Fp {
     }
 
     #[inline]
+    /// Performs the square root of an element in constant time.
+    ///
+    /// NOTE:
+    /// We use Shank's method, as p = 3 (mod 4). This means
+    /// we only need to exponentiate by (p+1)/4. This only
+    /// works for elements that are actually quadratic residue,
+    /// so we check that we got the correct result at the end.
     pub fn sqrt(&self) -> CtOption<Self> {
-        // We use Shank's method, as p = 3 (mod 4). This means
-        // we only need to exponentiate by (p+1)/4. This only
-        // works for elements that are actually quadratic residue,
-        // so we check that we got the correct result at the end.
-
         let sqrt = self.pow_vartime(&[
             0xee7f_bfff_ffff_eaab,
             0x07aa_ffff_ac54_ffff,
@@ -379,6 +384,7 @@ impl Fp {
     }
 
     #[inline]
+    /// Performs constant time addition of two elements.
     pub const fn add(&self, rhs: &Fp) -> Fp {
         let (d0, carry) = adc(self.0[0], rhs.0[0], 0);
         let (d1, carry) = adc(self.0[1], rhs.0[1], carry);
@@ -393,6 +399,7 @@ impl Fp {
     }
 
     #[inline]
+    /// Performs constant time negation of an element.
     pub const fn neg(&self) -> Fp {
         let (d0, borrow) = sbb(MODULUS[0], self.0[0], 0);
         let (d1, borrow) = sbb(MODULUS[1], self.0[1], borrow);
@@ -418,6 +425,7 @@ impl Fp {
     }
 
     #[inline]
+    /// Performs constant time subtraction of two elements.
     pub const fn sub(&self, rhs: &Fp) -> Fp {
         (&rhs.neg()).add(self)
     }
@@ -562,6 +570,7 @@ impl Fp {
     }
 
     #[inline]
+    /// Performs constant time multiplication of two elements.
     pub const fn mul(&self, rhs: &Fp) -> Fp {
         let (t0, carry) = mac(0, self.0[0], rhs.0[0], 0);
         let (t1, carry) = mac(0, self.0[0], rhs.0[1], carry);
