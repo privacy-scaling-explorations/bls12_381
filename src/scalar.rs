@@ -5,7 +5,7 @@ use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use rand_core::RngCore;
 
-use ff::{Field, PrimeField};
+use ff::{Field, PrimeField, WithSmallOrderMulGroup};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "bits")]
@@ -710,6 +710,11 @@ impl PrimeField for Scalar {
     const ROOT_OF_UNITY: Self = ROOT_OF_UNITY;
     const ROOT_OF_UNITY_INV: Self = ROOT_OF_UNITY_INV;
     const DELTA: Self = DELTA;
+}
+
+impl WithSmallOrderMulGroup<3> for Scalar {
+    // TODO: Fix
+    const ZETA: Self = Scalar::zero();
 }
 
 #[cfg(all(feature = "bits", not(target_pointer_width = "64")))]

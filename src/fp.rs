@@ -3,6 +3,7 @@
 
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use ff::{Field, PrimeField, WithSmallOrderMulGroup};
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
@@ -67,6 +68,12 @@ impl ConditionallySelectable for Fp {
     }
 }
 
+impl From<u64> for Fp {
+    fn from(value: u64) -> Self {
+        Self([value, 0, 0, 0])
+    }
+}
+
 /// p = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
 const MODULUS: [u64; 6] = [
     0xb9fe_ffff_ffff_aaab,
@@ -108,6 +115,49 @@ const R3: Fp = Fp([
     0x34c0_4e5e_921e_1761,
     0x2512_d435_6572_4728,
     0x0aa6_3460_9175_5d4d,
+]);
+
+/// Fp(1/2)
+const TWO_INV: Fp = Fp([
+    0xdcff7fffffffd556,
+    0x0f55ffff58a9ffff,
+    0xb39869507b587b12,
+    0xb23ba5c279c2895f,
+    0x258dd3db21a5d66b,
+    0xd0088f51cbff34d,
+]);
+
+/// Generator of the field.
+const GENERATOR: Fp = Fp([0x0, 0x0, 0x0, 0x0, 0x0, 0x2]);
+
+/// Primitive root of unity
+const ROOT_OF_UNITY: Fp = Fp([
+    0x8527e005bf87356d,
+    0xd867814cd448c6d3,
+    0xae5a5b133eddd420,
+    0x356f43ccc999120f,
+    0xc4296fb7e96da4d6,
+    0x1938c01908424cd8,
+]);
+
+/// Inverse of the primitive root of unity.
+const ROOT_OF_UNITY_INV: Fp = Fp([
+    0xded7a779aa2898c8,
+    0x53f260542172180b,
+    0xf05b58c2034dddd6,
+    0x4a7cdeacf037ae72,
+    0x7aa8223a111aeea8,
+    0x5046e6d0c9ac33e,
+]);
+
+/// DELTA
+const DELTA: Fp = Fp([
+    0xca172967c7a255d7,
+    0xa5d11a97b6038a99,
+    0x19e243df219f0178,
+    0x74bc071476d308b7,
+    0x73a18c6550d55c00,
+    0x1536fbfcdcf7f2f5,
 ]);
 
 impl<'a> Neg for &'a Fp {
@@ -158,6 +208,90 @@ impl<'a, 'b> Mul<&'b Fp> for &'a Fp {
 impl_binops_additive!(Fp, Fp);
 impl_binops_multiplicative!(Fp, Fp);
 
+impl<T> core::iter::Sum<T> for Fp
+where
+    T: core::borrow::Borrow<Fp>,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::zero(), |acc, item| acc + item.borrow())
+    }
+}
+
+impl<T> core::iter::Product<T> for Fp
+where
+    T: core::borrow::Borrow<Fp>,
+{
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::one(), |acc, item| acc * item.borrow())
+    }
+}
+
+impl Field for Fp {
+    const ZERO: Self = Fp::zero();
+    const ONE: Self = Fp::one();
+
+    fn random(rng: impl RngCore) -> Self {
+        Self::random(rng)
+    }
+
+    fn square(&self) -> Self {
+        self.square()
+    }
+
+    fn double(&self) -> Self {
+        self.double()
+    }
+
+    fn invert(&self) -> CtOption<Self> {
+        self.invert()
+    }
+
+    fn sqrt_ratio(num: &Self, div: &Self) -> (Choice, Self) {
+        unimplemented!()
+    }
+
+    fn sqrt(&self) -> CtOption<Self> {
+        self.sqrt()
+    }
+}
+
+impl PrimeField for Fp {
+    type Repr = [u8; 32];
+
+    fn from_repr(r: Self::Repr) -> CtOption<Self> {
+        Self::from_bytes(&r)
+    }
+
+    fn to_repr(&self) -> Self::Repr {
+        self.to_bytes()
+    }
+
+    fn is_odd(&self) -> Choice {
+        Choice::from(self.to_bytes()[0] & 1)
+    }
+
+    const MODULUS: &'static str =
+        "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
+    const NUM_BITS: u32 = 381;
+    const CAPACITY: u32 = Self::NUM_BITS - 1;
+    const TWO_INV: Self = TWO_INV;
+    const MULTIPLICATIVE_GENERATOR: Self = GENERATOR;
+    const S: u32 = 32;
+    const ROOT_OF_UNITY: Self = ROOT_OF_UNITY;
+    const ROOT_OF_UNITY_INV: Self = ROOT_OF_UNITY_INV;
+    const DELTA: Self = DELTA;
+}
+
+// impl WithSmallOrderMulGroup<2> for Fp {
+//     const ZETA: Self = Fp::zero();
+// }
+
 impl Fp {
     /// Returns zero, the additive identity.
     #[inline]
@@ -169,11 +303,6 @@ impl Fp {
     #[inline]
     pub const fn one() -> Fp {
         R
-    }
-
-    /// Checks if a value is equal to zero in constant time.
-    pub fn is_zero(&self) -> Choice {
-        self.ct_eq(&Fp::zero())
     }
 
     /// Attempts to convert a big-endian byte representation of
