@@ -9,6 +9,7 @@ use crate::generic_array::{
     GenericArray,
 };
 use crate::{fp::Fp, fp2::Fp2, g2::G2Projective};
+use ff::Field;
 
 /// Coefficients of the 3-isogeny x map's numerator
 const ISO3_XNUM: [Fp2; 4] = [

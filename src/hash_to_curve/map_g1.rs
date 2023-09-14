@@ -7,6 +7,7 @@ use super::{HashToField, MapToCurve, Sgn0};
 use crate::fp::Fp;
 use crate::g1::G1Projective;
 use crate::generic_array::{typenum::U64, GenericArray};
+use ff::Field;
 
 /// Coefficients of the 11-isogeny x map's numerator
 const ISO11_XNUM: [Fp; 12] = [
