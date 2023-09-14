@@ -243,6 +243,15 @@ const DELTA: Scalar = Scalar([
     0x6185_d066_27c0_67cb,
 ]);
 
+/// ZETA
+// sage: modulus = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+//sage: GF(modulus).primitive_element() ^ ((modulus - 1) // 3)
+//228988810152649578064853576960394133503
+//sage: print(228988810152649578064853576960394133503.hex())
+//ac45a4010001a40200000000ffffffff
+// Also test with N=2 -> 73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000
+const ZETA: Scalar = Scalar([0x00000000ffffffff, 0xac45a4010001a402, 0x0, 0x0]);
+
 impl Default for Scalar {
     #[inline]
     fn default() -> Self {
@@ -736,7 +745,7 @@ impl PrimeField for Scalar {
 
 impl WithSmallOrderMulGroup<3> for Scalar {
     // TODO: Fix
-    const ZETA: Self = Scalar::zero();
+    const ZETA: Self = ZETA;
 }
 
 #[cfg(all(feature = "bits", not(target_pointer_width = "64")))]

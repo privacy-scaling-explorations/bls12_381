@@ -182,6 +182,21 @@ const DELTA: Fp = Fp([
     0x1536fbfcdcf7f2f5,
 ]);
 
+/// ZETA
+// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+// sage: factor(modulus-1)
+// 2 * 3^2 * 11 * 23 * 47 * 10177 * 859267 * 52437899 * 2584487767265781317813 * 15778400344354997994418419698270088123916926905054652752758194827714659
+// sage: GF(modulus).primitive_element() ^ ((modulus - 1) // 2)
+// 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559786
+const ZETA: Fp = Fp([
+    0xb9feffffffffaaaa,
+    0x1eabfffeb153ffff,
+    0x6730d2a0f6b0f624,
+    0x64774b84f38512bf,
+    0x4b1ba7b6434bacd7,
+    0x1a0111ea397fe69a,
+]);
+
 impl<'a> Neg for &'a Fp {
     type Output = Fp;
 
@@ -331,9 +346,8 @@ impl PrimeField for Fp {
     const DELTA: Self = DELTA;
 }
 
-// TODO: Fix!
 impl WithSmallOrderMulGroup<3> for Fp {
-    const ZETA: Self = Fp::zero();
+    const ZETA: Self = ZETA;
 }
 
 impl Fp {
