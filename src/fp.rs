@@ -70,7 +70,7 @@ impl ConditionallySelectable for Fp {
 
 impl From<u64> for Fp {
     fn from(value: u64) -> Self {
-        Self([value, 0, 0, 0])
+        Self([value, 0, 0, 0, 0, 0])
     }
 }
 
@@ -261,15 +261,36 @@ impl Field for Fp {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ReprFp(pub(crate) [u8; 48]);
+
+impl AsMut<[u8]> for ReprFp {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0[..]
+    }
+}
+
+impl AsRef<[u8]> for ReprFp {
+    fn as_ref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+impl Default for ReprFp {
+    fn default() -> Self {
+        Self([0u8; 48])
+    }
+}
+
 impl PrimeField for Fp {
-    type Repr = [u8; 32];
+    type Repr = ReprFp;
 
     fn from_repr(r: Self::Repr) -> CtOption<Self> {
-        Self::from_bytes(&r)
+        Self::from_bytes(&r.0)
     }
 
     fn to_repr(&self) -> Self::Repr {
-        self.to_bytes()
+        ReprFp(self.to_bytes())
     }
 
     fn is_odd(&self) -> Choice {
@@ -288,9 +309,10 @@ impl PrimeField for Fp {
     const DELTA: Self = DELTA;
 }
 
-// impl WithSmallOrderMulGroup<2> for Fp {
-//     const ZETA: Self = Fp::zero();
-// }
+// TODO: Fix!
+impl WithSmallOrderMulGroup<3> for Fp {
+    const ZETA: Self = Fp::zero();
+}
 
 impl Fp {
     /// Returns zero, the additive identity.
