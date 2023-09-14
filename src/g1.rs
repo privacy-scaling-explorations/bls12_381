@@ -5,6 +5,7 @@ use core::fmt;
 use core::iter::Sum;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use group::{
+    ff::Field,
     prime::{PrimeCurve, PrimeCurveAffine, PrimeGroup},
     Curve, Group, GroupEncoding, UncompressedEncoding,
 };
@@ -14,7 +15,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 #[cfg(feature = "alloc")]
 use group::WnafGroup;
 
-use pasta_curves::arithmetic::CurveExt;
+use pasta_curves::arithmetic::{Coordinates, CurveAffine, CurveExt};
 
 use crate::fp::Fp;
 use crate::Scalar;
@@ -148,6 +149,20 @@ impl<'a, 'b> Sub<&'b G1Projective> for &'a G1Affine {
     #[inline]
     fn sub(self, rhs: &'b G1Projective) -> G1Projective {
         self + (-rhs)
+    }
+}
+
+impl Add<G1Affine> for G1Affine {
+    type Output = G1Projective;
+    fn add(self, rhs: G1Affine) -> Self::Output {
+        self + rhs
+    }
+}
+
+impl Sub<G1Affine> for G1Affine {
+    type Output = G1Projective;
+    fn sub(self, rhs: G1Affine) -> Self::Output {
+        self - rhs
     }
 }
 
@@ -438,6 +453,53 @@ fn endomorphism(p: &G1Affine) -> G1Affine {
     res
 }
 
+impl CurveAffine for G1Affine {
+    /// The scalar field of this elliptic curve.
+    type ScalarExt = crate::Scalar;
+    /// The base field over which this elliptic curve is constructed.
+    type Base = crate::fp::Fp;
+    /// The projective form of the curve
+    type CurveExt = G1Projective;
+
+    /// Gets the coordinates of this point.
+    ///
+    /// Returns None if this is the identity.
+    fn coordinates(&self) -> CtOption<Coordinates<Self>> {
+        Coordinates::from_xy(self.x, self.y)
+    }
+
+    /// Obtains a point given $(x, y)$, failing if it is not on the
+    /// curve.
+    fn from_xy(x: Self::Base, y: Self::Base) -> CtOption<Self> {
+        let p: G1Affine = Self {
+            x,
+            y,
+            infinity: if x == Self::Base::ZERO && y == Self::Base::ONE {
+                Choice::from(1u8)
+            } else {
+                Choice::from(0u8)
+            },
+        };
+        CtOption::new(p, p.is_on_curve())
+    }
+
+    /// Returns whether or not this element is on the curve; should
+    /// always be true unless an "unchecked" API was used.
+    fn is_on_curve(&self) -> Choice {
+        self.is_on_curve()
+    }
+
+    /// Returns the curve constant $a$.
+    fn a() -> Self::Base {
+        Self::Base::ZERO
+    }
+
+    /// Returns the curve constant $b$.
+    fn b() -> Self::Base {
+        B
+    }
+}
+
 /// This is an element of $\mathbb{G}_1$ represented in the projective coordinate space.
 #[cfg_attr(docsrs, doc(cfg(feature = "groups")))]
 #[derive(Copy, Clone, Debug)]
@@ -589,7 +651,15 @@ impl<'a, 'b> Mul<&'b G1Affine> for &'a Scalar {
     }
 }
 
-impl CurveExt for G1Projective {}
+impl CurveExt for G1Projective {
+    type ScalarExt = Scalar;
+    type Base = Fp;
+    type AffineExt = G1Affine;
+
+    fn endo(&self) -> Self {
+        self.endo()
+    }
+}
 
 impl_binops_additive!(G1Projective, G1Projective);
 impl_binops_multiplicative!(G1Projective, Scalar);
