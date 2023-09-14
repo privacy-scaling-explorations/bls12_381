@@ -1,5 +1,6 @@
 //! This module provides an implementation of the $\mathbb{G}_1$ group of BLS12-381.
 
+use alloc::boxed::Box;
 use core::borrow::Borrow;
 use core::fmt;
 use core::iter::Sum;
@@ -656,8 +657,61 @@ impl CurveExt for G1Projective {
     type Base = Fp;
     type AffineExt = G1Affine;
 
+    const CURVE_ID: &'static str = "Bls12-381";
+
     fn endo(&self) -> Self {
         self.endo()
+    }
+
+    fn jacobian_coordinates(&self) -> (Fp, Fp, Fp) {
+        // Homogenous to Jacobian
+        let x = self.x * self.z;
+        let y = self.y * self.z.square();
+        (x, y, self.z)
+    }
+
+    fn hash_to_curve<'a>(domain_prefix: &'a str) -> Box<dyn Fn(&[u8]) -> Self + 'a> {
+        unimplemented!()
+    }
+
+    fn is_on_curve(&self) -> Choice {
+        if G1Affine::a() == Fp::ZERO {
+            // Check (Y/Z)^2 = (X/Z)^3 + b
+            // <=>    Z Y^2 - X^3 = Z^3 b
+
+            (self.z * self.y.square() - self.x.square() * self.x)
+                .ct_eq(&(self.z.square() * self.z * G1Affine::b()))
+                | self.z.is_zero()
+        } else {
+            // Check (Y/Z)^2 = (X/Z)^3 + a(X/Z) + b
+            // <=>    Z Y^2 - X^3 - a(X Z^2) = Z^3 b
+
+            let z2 = self.z.square();
+            (self.z * self.y.square() - (self.x.square() + G1Affine::a() * z2) * self.x)
+                .ct_eq(&(z2 * self.z * G1Affine::b()))
+                | self.z.is_zero()
+        }
+    }
+
+    fn b() -> Self::Base {
+        B
+    }
+
+    fn a() -> Self::Base {
+        G1Affine::a()
+    }
+
+    fn new_jacobian(x: Self::Base, y: Self::Base, z: Self::Base) -> CtOption<Self> {
+        // Jacobian to homogenous
+        let z_inv = z.invert().unwrap_or(Fp::zero());
+        let p_x = x * z_inv;
+        let p_y = y * z_inv.square();
+        let p = Self {
+            x: p_x,
+            y: Fp::conditional_select(&p_y, &Fp::one(), z.is_zero()),
+            z,
+        };
+        CtOption::new(p, p.is_on_curve())
     }
 }
 
