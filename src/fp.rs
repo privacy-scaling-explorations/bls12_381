@@ -1,6 +1,7 @@
 //! This module provides an implementation of the BLS12-381 base field `GF(p)`
 //! where `p = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab`
 
+use core::cmp::Ordering;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use ff::{Field, PrimeField, WithSmallOrderMulGroup};
@@ -52,6 +53,27 @@ impl PartialEq for Fp {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         bool::from(self.ct_eq(other))
+    }
+}
+
+impl Ord for Fp {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let left = self.to_repr().0;
+        let right = other.to_repr().0;
+        left.iter()
+            .zip(right.iter())
+            .rev()
+            .find_map(|(left_byte, right_byte)| match left_byte.cmp(right_byte) {
+                Ordering::Equal => None,
+                res => Some(res),
+            })
+            .unwrap_or(Ordering::Equal)
+    }
+}
+
+impl PartialOrd for Fp {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -262,7 +284,7 @@ impl Field for Fp {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct ReprFp(pub(crate) [u8; 48]);
+pub struct ReprFp(pub(crate) [u8; 48]);
 
 impl AsMut<[u8]> for ReprFp {
     fn as_mut(&mut self) -> &mut [u8] {

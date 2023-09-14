@@ -1,6 +1,7 @@
 //! This module provides an implementation of the BLS12-381 scalar field $\mathbb{F}_q$
 //! where `q = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001`
 
+use core::cmp::Ordering;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use rand_core::RngCore;
@@ -57,6 +58,27 @@ impl PartialEq for Scalar {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         bool::from(self.ct_eq(other))
+    }
+}
+
+impl Ord for Scalar {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let left = self.to_repr();
+        let right = other.to_repr();
+        left.iter()
+            .zip(right.iter())
+            .rev()
+            .find_map(|(left_byte, right_byte)| match left_byte.cmp(right_byte) {
+                Ordering::Equal => None,
+                res => Some(res),
+            })
+            .unwrap_or(Ordering::Equal)
+    }
+}
+
+impl PartialOrd for Scalar {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
