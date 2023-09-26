@@ -184,17 +184,16 @@ const DELTA: Fp = Fp([
 
 /// ZETA
 // sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
-// sage: factor(modulus-1)
-// 2 * 3^2 * 11 * 23 * 47 * 10177 * 859267 * 52437899 * 2584487767265781317813 * 15778400344354997994418419698270088123916926905054652752758194827714659
-// sage: GF(modulus).primitive_element() ^ ((modulus - 1) // 2)
-// 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559786
+// sage: GF(modulus).primitive_element() ^ ((modulus - 1) // 3)
+// 793479390729215512621379701633421447060886740281060493010456487427281649075476305620758731620350
+// 5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe
 const ZETA: Fp = Fp([
-    0xb9feffffffffaaaa,
-    0x1eabfffeb153ffff,
-    0x6730d2a0f6b0f624,
-    0x64774b84f38512bf,
-    0x4b1ba7b6434bacd7,
-    0x1a0111ea397fe69a,
+    0x2e01fffffffefffe,
+    0xde17d813620a0002,
+    0xddb3a93be6f89688,
+    0xba69c6076a0f77ea,
+    0x5f19672fdf76ce51,
+    0x0000000000000000,
 ]);
 
 impl<'a> Neg for &'a Fp {
@@ -282,7 +281,7 @@ impl Field for Fp {
     }
 
     fn double(&self) -> Self {
-        self.double()
+        self.add(self)
     }
 
     fn invert(&self) -> CtOption<Self> {
@@ -290,7 +289,7 @@ impl Field for Fp {
     }
 
     fn sqrt_ratio(num: &Self, div: &Self) -> (Choice, Self) {
-        unimplemented!()
+        ff::helpers::sqrt_ratio_generic(num, div)
     }
 
     fn sqrt(&self) -> CtOption<Self> {
@@ -334,8 +333,7 @@ impl PrimeField for Fp {
         Choice::from(self.to_bytes()[0] & 1)
     }
 
-    const MODULUS: &'static str =
-        "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
+    const MODULUS: &'static str = "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
     const NUM_BITS: u32 = 381;
     const CAPACITY: u32 = Self::NUM_BITS - 1;
     const TWO_INV: Self = TWO_INV;
