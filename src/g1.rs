@@ -156,14 +156,14 @@ impl<'a, 'b> Sub<&'b G1Projective> for &'a G1Affine {
 impl Add<G1Affine> for G1Affine {
     type Output = G1Projective;
     fn add(self, rhs: G1Affine) -> Self::Output {
-        self + rhs
+        self.to_curve() + rhs.to_curve()
     }
 }
 
 impl Sub<G1Affine> for G1Affine {
     type Output = G1Projective;
     fn sub(self, rhs: G1Affine) -> Self::Output {
-        self - rhs
+        self + -rhs
     }
 }
 
@@ -660,7 +660,7 @@ impl CurveExt for G1Projective {
     const CURVE_ID: &'static str = "Bls12-381";
 
     fn endo(&self) -> Self {
-        self.endo()
+        endomorphism(&G1Affine::from(self)).into()
     }
 
     fn jacobian_coordinates(&self) -> (Fp, Fp, Fp) {
@@ -670,7 +670,8 @@ impl CurveExt for G1Projective {
         (x, y, self.z)
     }
 
-    fn hash_to_curve<'a>(domain_prefix: &'a str) -> Box<dyn Fn(&[u8]) -> Self + 'a> {
+    fn hash_to_curve<'a>(_domain_prefix: &'a str) -> Box<dyn Fn(&[u8]) -> Self + 'a> {
+        // XXX: TODO
         unimplemented!()
     }
 

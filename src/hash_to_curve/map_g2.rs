@@ -610,7 +610,7 @@ fn test_encode_to_curve_10() {
 
     for case in cases {
         let g = <G2Projective as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::encode_to_curve(
-            &case.msg, DOMAIN,
+            case.msg, DOMAIN,
         );
         let g_uncompressed = G2Affine::from(g).to_uncompressed();
 
@@ -700,7 +700,7 @@ fn test_hash_to_curve_10() {
 
     for case in cases {
         let g = <G2Projective as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(
-            &case.msg, DOMAIN,
+            case.msg, DOMAIN,
         );
         let g_uncompressed = G2Affine::from(g).to_uncompressed();
 

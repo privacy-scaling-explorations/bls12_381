@@ -580,7 +580,7 @@ impl Fp {
 
         // Attempt to subtract the modulus, to ensure the value
         // is smaller than the modulus.
-        (&Fp([d0, d1, d2, d3, d4, d5])).subtract_p()
+        (Fp([d0, d1, d2, d3, d4, d5])).subtract_p()
     }
 
     #[inline]
