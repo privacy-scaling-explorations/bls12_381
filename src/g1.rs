@@ -1,5 +1,6 @@
 //! This module provides an implementation of the $\mathbb{G}_1$ group of BLS12-381.
 
+#[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 use core::borrow::Borrow;
 use core::fmt;
@@ -16,6 +17,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 #[cfg(feature = "alloc")]
 use group::WnafGroup;
 
+#[cfg(feature = "alloc")]
 use pasta_curves::arithmetic::{Coordinates, CurveAffine, CurveExt};
 
 use crate::fp::Fp;
@@ -454,6 +456,7 @@ fn endomorphism(p: &G1Affine) -> G1Affine {
     res
 }
 
+#[cfg(feature = "alloc")]
 impl CurveAffine for G1Affine {
     /// The scalar field of this elliptic curve.
     type ScalarExt = crate::Scalar;
@@ -652,6 +655,7 @@ impl<'a, 'b> Mul<&'b G1Affine> for &'a Scalar {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl CurveExt for G1Projective {
     type ScalarExt = Scalar;
     type Base = Fp;
