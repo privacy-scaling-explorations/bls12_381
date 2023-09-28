@@ -478,11 +478,7 @@ impl CurveAffine for G1Affine {
         let p: G1Affine = Self {
             x,
             y,
-            infinity: if x == Self::Base::ZERO && y == Self::Base::ONE {
-                Choice::from(1u8)
-            } else {
-                Choice::from(0u8)
-            },
+            infinity: x.ct_eq(&Self::Base::ZERO) & y.ct_eq(&Self::Base::ZERO),
         };
         CtOption::new(p, p.is_on_curve())
     }
@@ -680,30 +676,19 @@ impl CurveExt for G1Projective {
     }
 
     fn is_on_curve(&self) -> Choice {
-        if G1Affine::a() == Fp::ZERO {
-            // Check (Y/Z)^2 = (X/Z)^3 + b
-            // <=>    Z Y^2 - X^3 = Z^3 b
+        // Check (Y/Z)^2 = (X/Z)^3 + b
+        // <=>    Z Y^2 - X^3 = Z^3 b
 
-            (self.z * self.y.square() - self.x.square() * self.x)
-                .ct_eq(&(self.z.square() * self.z * G1Affine::b()))
-                | self.z.is_zero()
-        } else {
-            // Check (Y/Z)^2 = (X/Z)^3 + a(X/Z) + b
-            // <=>    Z Y^2 - X^3 - a(X Z^2) = Z^3 b
-
-            let z2 = self.z.square();
-            (self.z * self.y.square() - (self.x.square() + G1Affine::a() * z2) * self.x)
-                .ct_eq(&(z2 * self.z * G1Affine::b()))
-                | self.z.is_zero()
-        }
-    }
+        (self.z * self.y.square() - self.x.square() * self.x)
+            .ct_eq(&(self.z.square() * self.z * G1Affine::b()))
+            | self.z.is_zero()
 
     fn b() -> Self::Base {
         B
     }
 
     fn a() -> Self::Base {
-        G1Affine::a()
+        Self::Base::ZERO
     }
 
     fn new_jacobian(x: Self::Base, y: Self::Base, z: Self::Base) -> CtOption<Self> {

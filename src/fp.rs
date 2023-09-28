@@ -93,7 +93,7 @@ impl ConditionallySelectable for Fp {
 
 impl From<u64> for Fp {
     fn from(value: u64) -> Self {
-        Self([value, 0, 0, 0, 0, 0])
+        Self([value, 0, 0, 0, 0, 0]) * R2
     }
 }
 
@@ -141,60 +141,82 @@ const R3: Fp = Fp([
 ]);
 
 /// Fp(1/2)
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex(((1 / 2) * (2^384)) % modulus)
+/// '0x17fbb8571a006596d3916126f2d14ca26e22d1ec31ebb502633cb57c253c276f855000053ab000011804000000015554'
 const TWO_INV: Fp = Fp([
-    0xdcff7fffffffd556,
-    0x0f55ffff58a9ffff,
-    0xb39869507b587b12,
-    0xb23ba5c279c2895f,
-    0x258dd3db21a5d66b,
-    0xd0088f51cbff34d,
+    0x1804000000015554,
+    0x855000053ab00001,
+    0x633cb57c253c276f,
+    0x6e22d1ec31ebb502,
+    0xd3916126f2d14ca2,
+    0x17fbb8571a006596,
 ]);
 
 /// Generator of the field.
-const GENERATOR: Fp = Fp([0x0, 0x0, 0x0, 0x0, 0x0, 0x2]);
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((2 * (2^384)) % modulus)
+/// '0x11ebab9dbb81e28c6cf28d7901622c038b256521ed1f9bcb57605e0db0ddbb51b93c0018d6c40005321300000006554f'
+const GENERATOR: Fp = Fp([
+    0x321300000006554f,
+    0xb93c0018d6c40005,
+    0x57605e0db0ddbb51,
+    0x8b256521ed1f9bcb,
+    0x6cf28d7901622c03,
+    0x11ebab9dbb81e28c,
+]);
 
 /// Primitive root of unity
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((GF(modulus)(2) ^ ((modulus - 1) >> 1)) * (2^384))
+/// '0x40ab3263eff0206ef148d1ea0f4c069eca8f3318332bb7a07e83a49a2e99d6932b7fff2ed47fffd43f5fffffffcaaae'
 const ROOT_OF_UNITY: Fp = Fp([
-    0x8527e005bf87356d,
-    0xd867814cd448c6d3,
-    0xae5a5b133eddd420,
-    0x356f43ccc999120f,
-    0xc4296fb7e96da4d6,
-    0x1938c01908424cd8,
+    0x43f5fffffffcaaae,
+    0x32b7fff2ed47fffd,
+    0x07e83a49a2e99d69,
+    0xeca8f3318332bb7a,
+    0xef148d1ea0f4c069,
+    0x40ab3263eff0206,
 ]);
 
 /// Inverse of the primitive root of unity.
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((1 / (GF(modulus)(2) ^ ((modulus - 1) >> 1))) * (2^384))
+/// '0x40ab3263eff0206ef148d1ea0f4c069eca8f3318332bb7a07e83a49a2e99d6932b7fff2ed47fffd43f5fffffffcaaae'
 const ROOT_OF_UNITY_INV: Fp = Fp([
-    0xded7a779aa2898c8,
-    0x53f260542172180b,
-    0xf05b58c2034dddd6,
-    0x4a7cdeacf037ae72,
-    0x7aa8223a111aeea8,
-    0x5046e6d0c9ac33e,
+    0x43f5fffffffcaaae,
+    0x32b7fff2ed47fffd,
+    0x07e83a49a2e99d69,
+    0xeca8f3318332bb7a,
+    0xef148d1ea0f4c069,
+    0x40ab3263eff0206,
 ]);
 
 /// DELTA
+/// DELTA
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((GF(modulus)(2) ^ (2 ^ 1)) * (2^384))
+/// '0x9d645513d83de7e8ec9733bbf78ab2fb1d37ebee6ba24d7478fe97a6b0a807f53cc0032fc34000aaa270000000cfff3'
 const DELTA: Fp = Fp([
-    0xca172967c7a255d7,
-    0xa5d11a97b6038a99,
-    0x19e243df219f0178,
-    0x74bc071476d308b7,
-    0x73a18c6550d55c00,
-    0x1536fbfcdcf7f2f5,
+    0xaa270000000cfff3,
+    0x53cc0032fc34000a,
+    0x478fe97a6b0a807f,
+    0xb1d37ebee6ba24d7,
+    0x8ec9733bbf78ab2f,
+    0x9d645513d83de7e,
 ]);
 
 /// ZETA
-// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
-// sage: GF(modulus).primitive_element() ^ ((modulus - 1) // 3)
-// 793479390729215512621379701633421447060886740281060493010456487427281649075476305620758731620350
-// 5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((1 / (GF(modulus)(2) ^ ((modulus - 1) // 3))) * (2^384))
+/// '0x18f020655463874103f97d6e83d050d28eb60ebe01bacb9e587042afd3851b955dab22461fcda5d2cd03c9e48671f071'
 const ZETA: Fp = Fp([
-    0x2e01fffffffefffe,
-    0xde17d813620a0002,
-    0xddb3a93be6f89688,
-    0xba69c6076a0f77ea,
-    0x5f19672fdf76ce51,
-    0x0000000000000000,
+    0xcd03c9e48671f071,
+    0x5dab22461fcda5d2,
+    0x587042afd3851b95,
+    0x8eb60ebe01bacb9e,
+    0x03f97d6e83d050d2,
+    0x18f0206554638741,
 ]);
 
 impl<'a> Neg for &'a Fp {
@@ -339,7 +361,7 @@ impl PrimeField for Fp {
     const CAPACITY: u32 = Self::NUM_BITS - 1;
     const TWO_INV: Self = TWO_INV;
     const MULTIPLICATIVE_GENERATOR: Self = GENERATOR;
-    const S: u32 = 32;
+    const S: u32 = 1;
     const ROOT_OF_UNITY: Self = ROOT_OF_UNITY;
     const ROOT_OF_UNITY_INV: Self = ROOT_OF_UNITY_INV;
     const DELTA: Self = DELTA;
