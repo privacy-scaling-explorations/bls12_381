@@ -682,6 +682,7 @@ impl CurveExt for G1Projective {
         (self.z * self.y.square() - self.x.square() * self.x)
             .ct_eq(&(self.z.square() * self.z * G1Affine::b()))
             | self.z.is_zero()
+    }
 
     fn b() -> Self::Base {
         B

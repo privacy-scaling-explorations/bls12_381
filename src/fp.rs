@@ -878,6 +878,27 @@ impl Fp {
 }
 
 #[test]
+fn test_constants() {
+    assert_eq!(Fp::ONE.double(), GENERATOR);
+    assert_eq!(Fp::ONE, Fp::ONE.double() * TWO_INV);
+    assert_eq!(Fp::ONE, ROOT_OF_UNITY.pow([1 << Fp::S]));
+    assert_eq!(Fp::ONE, ROOT_OF_UNITY * ROOT_OF_UNITY_INV);
+    // sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+    // sage: hex((modulus - 1) >> 1)
+    // '0xd0088f51cbff34d258dd3db21a5d66bb23ba5c279c2895fb39869507b587b120f55ffff58a9ffffdcff7fffffffd555'
+    let t = [
+        0xdcff7fffffffd555,
+        0x0f55ffff58a9ffff,
+        0xb39869507b587b12,
+        0xb23ba5c279c2895f,
+        0x258dd3db21a5d66b,
+        0xd0088f51cbff34d,
+    ];
+    assert_eq!(Fp::ONE, DELTA.pow(t));
+    assert_eq!(Fp::ONE, ZETA.pow([3]));
+}
+
+#[test]
 fn test_conditional_selection() {
     let a = Fp([1, 2, 3, 4, 5, 6]);
     let b = Fp([7, 8, 9, 10, 11, 12]);

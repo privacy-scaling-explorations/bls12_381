@@ -742,7 +742,6 @@ impl PrimeField for Scalar {
 }
 
 impl WithSmallOrderMulGroup<3> for Scalar {
-    // TODO: Fix
     const ZETA: Self = ZETA;
 }
 
