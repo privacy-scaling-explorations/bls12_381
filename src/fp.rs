@@ -320,6 +320,8 @@ impl Field for Fp {
     }
 }
 
+/// This struct represents the [`Fp`] struct serialized as an array of 48 bytes
+/// in Little Endian.
 #[derive(Debug, Clone, Copy)]
 pub struct ReprFp(pub(crate) [u8; 48]);
 
@@ -335,6 +337,20 @@ impl AsRef<[u8]> for ReprFp {
     }
 }
 
+impl AsRef<[u8; 48]> for ReprFp {
+    fn as_ref(&self) -> &[u8; 48] {
+        &self.0
+    }
+}
+
+impl From<[u8; 48]> for ReprFp {
+    fn from(value: [u8; 48]) -> Self {
+        // This uses little endian and so, assumes the array passed in is
+        // in that format.
+        Self(value)
+    }
+}
+
 impl Default for ReprFp {
     fn default() -> Self {
         Self([0u8; 48])
@@ -345,11 +361,15 @@ impl PrimeField for Fp {
     type Repr = ReprFp;
 
     fn from_repr(r: Self::Repr) -> CtOption<Self> {
+        // This uses little endian and so, assumes the array passed in is
+        // in that format.
         Self::from_bytes(&r.0)
     }
 
     fn to_repr(&self) -> Self::Repr {
-        ReprFp(self.to_bytes())
+        let mut le_bytes = self.to_bytes();
+        le_bytes.reverse();
+        ReprFp(le_bytes)
     }
 
     fn is_odd(&self) -> Choice {
