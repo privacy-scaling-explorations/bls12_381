@@ -360,9 +360,10 @@ impl Default for ReprFp {
 impl PrimeField for Fp {
     type Repr = ReprFp;
 
-    fn from_repr(r: Self::Repr) -> CtOption<Self> {
+    fn from_repr(mut r: Self::Repr) -> CtOption<Self> {
         // This uses little endian and so, assumes the array passed in is
         // in that format.
+        r.0.reverse();
         Self::from_bytes(&r.0)
     }
 
@@ -1234,6 +1235,13 @@ fn test_lexicographic_largest() {
         ])
         .lexicographically_largest()
     ));
+}
+
+#[test]
+fn test_repr() {
+    for value in [Fp::ZERO, Fp::ONE, Fp::ROOT_OF_UNITY] {
+        assert_eq!(Fp::from_repr(value.to_repr()).unwrap(), value);
+    }
 }
 
 #[cfg(feature = "zeroize")]
