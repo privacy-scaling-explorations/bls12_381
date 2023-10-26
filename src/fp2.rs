@@ -1,7 +1,9 @@
 //! This module implements arithmetic over the quadratic extension field Fp2.
 
+#![allow(clippy::needless_borrow)]
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use ff::Field;
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 

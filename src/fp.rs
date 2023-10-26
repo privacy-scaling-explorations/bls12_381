@@ -1,8 +1,11 @@
 //! This module provides an implementation of the BLS12-381 base field `GF(p)`
 //! where `p = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab`
 
+#![allow(clippy::needless_borrow)]
+use core::cmp::Ordering;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use ff::{Field, PrimeField, WithSmallOrderMulGroup};
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
@@ -54,6 +57,27 @@ impl PartialEq for Fp {
     }
 }
 
+impl Ord for Fp {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let left = self.to_repr().0;
+        let right = other.to_repr().0;
+        left.iter()
+            .zip(right.iter())
+            .rev()
+            .find_map(|(left_byte, right_byte)| match left_byte.cmp(right_byte) {
+                Ordering::Equal => None,
+                res => Some(res),
+            })
+            .unwrap_or(Ordering::Equal)
+    }
+}
+
+impl PartialOrd for Fp {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl ConditionallySelectable for Fp {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         Fp([
@@ -64,6 +88,12 @@ impl ConditionallySelectable for Fp {
             u64::conditional_select(&a.0[4], &b.0[4], choice),
             u64::conditional_select(&a.0[5], &b.0[5], choice),
         ])
+    }
+}
+
+impl From<u64> for Fp {
+    fn from(value: u64) -> Self {
+        Self([value, 0, 0, 0, 0, 0]) * R2
     }
 }
 
@@ -108,6 +138,85 @@ const R3: Fp = Fp([
     0x34c0_4e5e_921e_1761,
     0x2512_d435_6572_4728,
     0x0aa6_3460_9175_5d4d,
+]);
+
+/// Fp(1/2)
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex(((1 / 2) * (2^384)) % modulus)
+/// '0x17fbb8571a006596d3916126f2d14ca26e22d1ec31ebb502633cb57c253c276f855000053ab000011804000000015554'
+const TWO_INV: Fp = Fp([
+    0x1804000000015554,
+    0x855000053ab00001,
+    0x633cb57c253c276f,
+    0x6e22d1ec31ebb502,
+    0xd3916126f2d14ca2,
+    0x17fbb8571a006596,
+]);
+
+/// Generator of the field.
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((2 * (2^384)) % modulus)
+/// '0x11ebab9dbb81e28c6cf28d7901622c038b256521ed1f9bcb57605e0db0ddbb51b93c0018d6c40005321300000006554f'
+const GENERATOR: Fp = Fp([
+    0x321300000006554f,
+    0xb93c0018d6c40005,
+    0x57605e0db0ddbb51,
+    0x8b256521ed1f9bcb,
+    0x6cf28d7901622c03,
+    0x11ebab9dbb81e28c,
+]);
+
+/// Primitive root of unity
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((GF(modulus)(2) ^ ((modulus - 1) >> 1)) * (2^384))
+/// '0x40ab3263eff0206ef148d1ea0f4c069eca8f3318332bb7a07e83a49a2e99d6932b7fff2ed47fffd43f5fffffffcaaae'
+const ROOT_OF_UNITY: Fp = Fp([
+    0x43f5fffffffcaaae,
+    0x32b7fff2ed47fffd,
+    0x07e83a49a2e99d69,
+    0xeca8f3318332bb7a,
+    0xef148d1ea0f4c069,
+    0x40ab3263eff0206,
+]);
+
+/// Inverse of the primitive root of unity.
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((1 / (GF(modulus)(2) ^ ((modulus - 1) >> 1))) * (2^384))
+/// '0x40ab3263eff0206ef148d1ea0f4c069eca8f3318332bb7a07e83a49a2e99d6932b7fff2ed47fffd43f5fffffffcaaae'
+const ROOT_OF_UNITY_INV: Fp = Fp([
+    0x43f5fffffffcaaae,
+    0x32b7fff2ed47fffd,
+    0x07e83a49a2e99d69,
+    0xeca8f3318332bb7a,
+    0xef148d1ea0f4c069,
+    0x40ab3263eff0206,
+]);
+
+/// DELTA
+/// DELTA
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((GF(modulus)(2) ^ (2 ^ 1)) * (2^384))
+/// '0x9d645513d83de7e8ec9733bbf78ab2fb1d37ebee6ba24d7478fe97a6b0a807f53cc0032fc34000aaa270000000cfff3'
+const DELTA: Fp = Fp([
+    0xaa270000000cfff3,
+    0x53cc0032fc34000a,
+    0x478fe97a6b0a807f,
+    0xb1d37ebee6ba24d7,
+    0x8ec9733bbf78ab2f,
+    0x9d645513d83de7e,
+]);
+
+/// ZETA
+/// sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+/// sage: hex((1 / (GF(modulus)(2) ^ ((modulus - 1) // 3))) * (2^384))
+/// '0x18f020655463874103f97d6e83d050d28eb60ebe01bacb9e587042afd3851b955dab22461fcda5d2cd03c9e48671f071'
+const ZETA: Fp = Fp([
+    0xcd03c9e48671f071,
+    0x5dab22461fcda5d2,
+    0x587042afd3851b95,
+    0x8eb60ebe01bacb9e,
+    0x03f97d6e83d050d2,
+    0x18f0206554638741,
 ]);
 
 impl<'a> Neg for &'a Fp {
@@ -158,6 +267,131 @@ impl<'a, 'b> Mul<&'b Fp> for &'a Fp {
 impl_binops_additive!(Fp, Fp);
 impl_binops_multiplicative!(Fp, Fp);
 
+impl<T> core::iter::Sum<T> for Fp
+where
+    T: core::borrow::Borrow<Fp>,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::zero(), |acc, item| acc + item.borrow())
+    }
+}
+
+impl<T> core::iter::Product<T> for Fp
+where
+    T: core::borrow::Borrow<Fp>,
+{
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Self::one(), |acc, item| acc * item.borrow())
+    }
+}
+
+impl Field for Fp {
+    const ZERO: Self = Fp::zero();
+    const ONE: Self = Fp::one();
+
+    fn random(rng: impl RngCore) -> Self {
+        Self::random(rng)
+    }
+
+    fn square(&self) -> Self {
+        self.square()
+    }
+
+    fn double(&self) -> Self {
+        self.add(self)
+    }
+
+    fn invert(&self) -> CtOption<Self> {
+        self.invert()
+    }
+
+    fn sqrt_ratio(num: &Self, div: &Self) -> (Choice, Self) {
+        ff::helpers::sqrt_ratio_generic(num, div)
+    }
+
+    fn sqrt(&self) -> CtOption<Self> {
+        self.sqrt()
+    }
+}
+
+/// This struct represents the [`Fp`] struct serialized as an array of 48 bytes
+/// in Little Endian.
+#[derive(Debug, Clone, Copy)]
+pub struct ReprFp(pub(crate) [u8; 48]);
+
+impl AsMut<[u8]> for ReprFp {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0[..]
+    }
+}
+
+impl AsRef<[u8]> for ReprFp {
+    fn as_ref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+impl AsRef<[u8; 48]> for ReprFp {
+    fn as_ref(&self) -> &[u8; 48] {
+        &self.0
+    }
+}
+
+impl From<[u8; 48]> for ReprFp {
+    fn from(value: [u8; 48]) -> Self {
+        // This uses little endian and so, assumes the array passed in is
+        // in that format.
+        Self(value)
+    }
+}
+
+impl Default for ReprFp {
+    fn default() -> Self {
+        Self([0u8; 48])
+    }
+}
+
+impl PrimeField for Fp {
+    type Repr = ReprFp;
+
+    fn from_repr(mut r: Self::Repr) -> CtOption<Self> {
+        // This uses little endian and so, assumes the array passed in is
+        // in that format.
+        r.0.reverse();
+        Self::from_bytes(&r.0)
+    }
+
+    fn to_repr(&self) -> Self::Repr {
+        let mut le_bytes = self.to_bytes();
+        le_bytes.reverse();
+        ReprFp(le_bytes)
+    }
+
+    fn is_odd(&self) -> Choice {
+        Choice::from(self.to_bytes()[0] & 1)
+    }
+
+    const MODULUS: &'static str = "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab";
+    const NUM_BITS: u32 = 381;
+    const CAPACITY: u32 = Self::NUM_BITS - 1;
+    const TWO_INV: Self = TWO_INV;
+    const MULTIPLICATIVE_GENERATOR: Self = GENERATOR;
+    const S: u32 = 1;
+    const ROOT_OF_UNITY: Self = ROOT_OF_UNITY;
+    const ROOT_OF_UNITY_INV: Self = ROOT_OF_UNITY_INV;
+    const DELTA: Self = DELTA;
+}
+
+impl WithSmallOrderMulGroup<3> for Fp {
+    const ZETA: Self = ZETA;
+}
+
 impl Fp {
     /// Returns zero, the additive identity.
     #[inline]
@@ -169,11 +403,6 @@ impl Fp {
     #[inline]
     pub const fn one() -> Fp {
         R
-    }
-
-    /// Checks if a value is equal to zero in constant time.
-    pub fn is_zero(&self) -> Choice {
-        self.ct_eq(&Fp::zero())
     }
 
     /// Attempts to convert a big-endian byte representation of
@@ -395,7 +624,7 @@ impl Fp {
 
         // Attempt to subtract the modulus, to ensure the value
         // is smaller than the modulus.
-        (&Fp([d0, d1, d2, d3, d4, d5])).subtract_p()
+        (Fp([d0, d1, d2, d3, d4, d5])).subtract_p()
     }
 
     #[inline]
@@ -667,6 +896,27 @@ impl Fp {
 
         Self::montgomery_reduce(t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
     }
+}
+
+#[test]
+fn test_constants() {
+    assert_eq!(Fp::ONE.double(), GENERATOR);
+    assert_eq!(Fp::ONE, Fp::ONE.double() * TWO_INV);
+    assert_eq!(Fp::ONE, ROOT_OF_UNITY.pow([1 << Fp::S]));
+    assert_eq!(Fp::ONE, ROOT_OF_UNITY * ROOT_OF_UNITY_INV);
+    // sage: modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+    // sage: hex((modulus - 1) >> 1)
+    // '0xd0088f51cbff34d258dd3db21a5d66bb23ba5c279c2895fb39869507b587b120f55ffff58a9ffffdcff7fffffffd555'
+    let t = [
+        0xdcff7fffffffd555,
+        0x0f55ffff58a9ffff,
+        0xb39869507b587b12,
+        0xb23ba5c279c2895f,
+        0x258dd3db21a5d66b,
+        0xd0088f51cbff34d,
+    ];
+    assert_eq!(Fp::ONE, DELTA.pow(t));
+    assert_eq!(Fp::ONE, ZETA.pow([3]));
 }
 
 #[test]
@@ -985,6 +1235,13 @@ fn test_lexicographic_largest() {
         ])
         .lexicographically_largest()
     ));
+}
+
+#[test]
+fn test_repr() {
+    for value in [Fp::ZERO, Fp::ONE, Fp::ROOT_OF_UNITY] {
+        assert_eq!(Fp::from_repr(value.to_repr()).unwrap(), value);
+    }
 }
 
 #[cfg(feature = "zeroize")]

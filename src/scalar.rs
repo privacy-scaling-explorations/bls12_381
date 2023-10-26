@@ -1,11 +1,13 @@
 //! This module provides an implementation of the BLS12-381 scalar field $\mathbb{F}_q$
 //! where `q = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001`
 
+#![allow(clippy::needless_borrow)]
+use core::cmp::Ordering;
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use rand_core::RngCore;
 
-use ff::{Field, PrimeField};
+use ff::{Field, PrimeField, WithSmallOrderMulGroup};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "bits")]
@@ -57,6 +59,27 @@ impl PartialEq for Scalar {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         bool::from(self.ct_eq(other))
+    }
+}
+
+impl Ord for Scalar {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let left = self.to_repr();
+        let right = other.to_repr();
+        left.iter()
+            .zip(right.iter())
+            .rev()
+            .find_map(|(left_byte, right_byte)| match left_byte.cmp(right_byte) {
+                Ordering::Equal => None,
+                res => Some(res),
+            })
+            .unwrap_or(Ordering::Equal)
+    }
+}
+
+impl PartialOrd for Scalar {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -220,6 +243,12 @@ const DELTA: Scalar = Scalar([
     0x51e1_1418_6a8b_970d,
     0x6185_d066_27c0_67cb,
 ]);
+
+/// ZETA
+// sage: modulus = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+//sage: GF(modulus).primitive_element() ^ ((modulus - 1) // 3)
+//228988810152649578064853576960394133503
+const ZETA: Scalar = Scalar::from_raw([0x00000000ffffffff, 0xac45a4010001a402, 0, 0]);
 
 impl Default for Scalar {
     #[inline]
@@ -671,7 +700,7 @@ impl Field for Scalar {
         // (t - 1) // 2 = 6104339283789297388802252303364915521546564123189034618274734669823
         ff::helpers::sqrt_tonelli_shanks(
             self,
-            &[
+            [
                 0x7fff_2dff_7fff_ffff,
                 0x04d0_ec02_a9de_d201,
                 0x94ce_bea4_199c_ec04,
@@ -710,6 +739,10 @@ impl PrimeField for Scalar {
     const ROOT_OF_UNITY: Self = ROOT_OF_UNITY;
     const ROOT_OF_UNITY_INV: Self = ROOT_OF_UNITY_INV;
     const DELTA: Self = DELTA;
+}
+
+impl WithSmallOrderMulGroup<3> for Scalar {
+    const ZETA: Self = ZETA;
 }
 
 #[cfg(all(feature = "bits", not(target_pointer_width = "64")))]

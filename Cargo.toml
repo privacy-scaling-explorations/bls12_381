@@ -41,6 +41,11 @@ optional = true
 version = "0.13"
 default-features = false
 
+[dependencies.pasta_curves]
+version = "0.5"
+default-features = false
+optional = true
+
 [dependencies.group]
 version = "0.13"
 default-features = false
@@ -68,7 +73,7 @@ default = ["groups", "pairings", "alloc", "bits"]
 bits = ["ff/bits"]
 groups = ["group"]
 pairings = ["groups", "pairing"]
-alloc = ["group/alloc"]
+alloc = ["group/alloc", "pasta_curves/alloc"]
 experimental = ["digest"]
 nightly = ["subtle/nightly"]
 basefield = []

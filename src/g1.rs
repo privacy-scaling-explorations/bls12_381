@@ -1,10 +1,13 @@
 //! This module provides an implementation of the $\mathbb{G}_1$ group of BLS12-381.
 
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
 use core::borrow::Borrow;
 use core::fmt;
 use core::iter::Sum;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use group::{
+    ff::Field,
     prime::{PrimeCurve, PrimeCurveAffine, PrimeGroup},
     Curve, Group, GroupEncoding, UncompressedEncoding,
 };
@@ -13,6 +16,9 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "alloc")]
 use group::WnafGroup;
+
+#[cfg(feature = "alloc")]
+use pasta_curves::arithmetic::{Coordinates, CurveAffine, CurveExt};
 
 use crate::fp::Fp;
 use crate::Scalar;
@@ -146,6 +152,20 @@ impl<'a, 'b> Sub<&'b G1Projective> for &'a G1Affine {
     #[inline]
     fn sub(self, rhs: &'b G1Projective) -> G1Projective {
         self + (-rhs)
+    }
+}
+
+impl Add<G1Affine> for G1Affine {
+    type Output = G1Projective;
+    fn add(self, rhs: G1Affine) -> Self::Output {
+        self.to_curve() + rhs.to_curve()
+    }
+}
+
+impl Sub<G1Affine> for G1Affine {
+    type Output = G1Projective;
+    fn sub(self, rhs: G1Affine) -> Self::Output {
+        self + -rhs
     }
 }
 
@@ -436,6 +456,50 @@ fn endomorphism(p: &G1Affine) -> G1Affine {
     res
 }
 
+#[cfg(feature = "alloc")]
+impl CurveAffine for G1Affine {
+    /// The scalar field of this elliptic curve.
+    type ScalarExt = crate::Scalar;
+    /// The base field over which this elliptic curve is constructed.
+    type Base = crate::fp::Fp;
+    /// The projective form of the curve
+    type CurveExt = G1Projective;
+
+    /// Gets the coordinates of this point.
+    ///
+    /// Returns None if this is the identity.
+    fn coordinates(&self) -> CtOption<Coordinates<Self>> {
+        Coordinates::from_xy(self.x, self.y)
+    }
+
+    /// Obtains a point given $(x, y)$, failing if it is not on the
+    /// curve.
+    fn from_xy(x: Self::Base, y: Self::Base) -> CtOption<Self> {
+        let p: G1Affine = Self {
+            x,
+            y,
+            infinity: x.ct_eq(&Self::Base::ZERO) & y.ct_eq(&Self::Base::ZERO),
+        };
+        CtOption::new(p, p.is_on_curve())
+    }
+
+    /// Returns whether or not this element is on the curve; should
+    /// always be true unless an "unchecked" API was used.
+    fn is_on_curve(&self) -> Choice {
+        self.is_on_curve()
+    }
+
+    /// Returns the curve constant $a$.
+    fn a() -> Self::Base {
+        Self::Base::ZERO
+    }
+
+    /// Returns the curve constant $b$.
+    fn b() -> Self::Base {
+        B
+    }
+}
+
 /// This is an element of $\mathbb{G}_1$ represented in the projective coordinate space.
 #[cfg_attr(docsrs, doc(cfg(feature = "groups")))]
 #[derive(Copy, Clone, Debug)]
@@ -584,6 +648,61 @@ impl<'a, 'b> Mul<&'b G1Affine> for &'a Scalar {
     #[inline]
     fn mul(self, rhs: &'b G1Affine) -> Self::Output {
         rhs * self
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl CurveExt for G1Projective {
+    type ScalarExt = Scalar;
+    type Base = Fp;
+    type AffineExt = G1Affine;
+
+    const CURVE_ID: &'static str = "Bls12-381";
+
+    fn endo(&self) -> Self {
+        endomorphism(&G1Affine::from(self)).into()
+    }
+
+    fn jacobian_coordinates(&self) -> (Fp, Fp, Fp) {
+        // Homogenous to Jacobian
+        let x = self.x * self.z;
+        let y = self.y * self.z.square();
+        (x, y, self.z)
+    }
+
+    fn hash_to_curve<'a>(_domain_prefix: &'a str) -> Box<dyn Fn(&[u8]) -> Self + 'a> {
+        // XXX: TODO
+        unimplemented!()
+    }
+
+    fn is_on_curve(&self) -> Choice {
+        // Check (Y/Z)^2 = (X/Z)^3 + b
+        // <=>    Z Y^2 - X^3 = Z^3 b
+
+        (self.z * self.y.square() - self.x.square() * self.x)
+            .ct_eq(&(self.z.square() * self.z * G1Affine::b()))
+            | self.z.is_zero()
+    }
+
+    fn b() -> Self::Base {
+        B
+    }
+
+    fn a() -> Self::Base {
+        Self::Base::ZERO
+    }
+
+    fn new_jacobian(x: Self::Base, y: Self::Base, z: Self::Base) -> CtOption<Self> {
+        // Jacobian to homogenous
+        let z_inv = z.invert().unwrap_or(Fp::zero());
+        let p_x = x * z_inv;
+        let p_y = y * z_inv.square();
+        let p = Self {
+            x: p_x,
+            y: Fp::conditional_select(&p_y, &Fp::one(), z.is_zero()),
+            z,
+        };
+        CtOption::new(p, p.is_on_curve())
     }
 }
 

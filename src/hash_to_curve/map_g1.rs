@@ -7,6 +7,7 @@ use super::{HashToField, MapToCurve, Sgn0};
 use crate::fp::Fp;
 use crate::g1::G1Projective;
 use crate::generic_array::{typenum::U64, GenericArray};
+use ff::Field;
 
 /// Coefficients of the 11-isogeny x map's numerator
 const ISO11_XNUM: [Fp; 12] = [
@@ -841,7 +842,7 @@ fn test_encode_to_curve_10() {
 
     for case in cases {
         let g = <G1Projective as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::encode_to_curve(
-            &case.msg, DOMAIN,
+            case.msg, DOMAIN,
         );
         let aff = G1Affine::from(g);
         let g_uncompressed = aff.to_uncompressed();
@@ -922,7 +923,7 @@ fn test_hash_to_curve_10() {
 
     for case in cases {
         let g = <G1Projective as HashToCurve<ExpandMsgXmd<sha2::Sha256>>>::hash_to_curve(
-            &case.msg, DOMAIN,
+            case.msg, DOMAIN,
         );
         let g_uncompressed = G1Affine::from(g).to_uncompressed();
 
