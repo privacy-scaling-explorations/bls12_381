@@ -392,10 +392,10 @@ impl WithSmallOrderMulGroup<3> for Fp {
     const ZETA: Self = ZETA;
 }
 
-impl FromUniformBytes<96> for Fp {
-    /// Converts a 768-bit big endian endian integer into
+impl FromUniformBytes<64> for Fp {
+    /// Converts a 512-bit big endian endian integer into
     /// an `Fp` by reducing by the modulus.
-    fn from_uniform_bytes(bytes: &[u8; 96]) -> Self {
+    fn from_uniform_bytes(bytes: &[u8; 64]) -> Self {
         // Parse the random bytes as a big-endian number, to match Fp encoding order.
         Self::from_u768([
             u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
@@ -406,13 +406,14 @@ impl FromUniformBytes<96> for Fp {
             u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
             u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
             u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[64..72]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[72..80]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[80..88]).unwrap()),
-            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[88..96]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
+            u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
         ])
     }
 }
+
 impl Fp {
     /// Returns zero, the additive identity.
     #[inline]
