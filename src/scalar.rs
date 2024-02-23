@@ -679,7 +679,7 @@ impl Scalar {
         Self(inner)
     }
     /// From raw bytes
-    fn from_raw_bytes(bytes: &[u8]) -> Option<Self> {
+    pub fn from_raw_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != 32 {
             return None;
         }
@@ -687,7 +687,7 @@ impl Scalar {
         Self::is_less_than(&elt.0, &MODULUS.0).then(|| elt)
     }
     /// To raw bytes
-    fn to_raw_bytes(&self) -> Vec<u8> {
+    pub fn to_raw_bytes(&self) -> Vec<u8> {
         let mut res = Vec::with_capacity(32);
         for limb in self.0.iter() {
             res.extend_from_slice(&limb.to_le_bytes());
@@ -695,7 +695,7 @@ impl Scalar {
         res
     }
     /// Read raw unchecked
-    fn read_raw_unchecked<R: std::io::Read>(reader: &mut R) -> Self {
+    pub fn read_raw_unchecked<R: std::io::Read>(reader: &mut R) -> Self {
         let inner = [(); 4].map(|_| {
             let mut buf = [0; 8];
             reader.read_exact(&mut buf).unwrap();
