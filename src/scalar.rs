@@ -670,7 +670,8 @@ impl Scalar {
         borrow >> 63 == 1
     }
 
-    fn read_raw<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+    /// Read raw bytes.
+    pub fn read_raw<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
         let mut inner = [0u64; 4];
         for limb in inner.iter_mut() {
             let mut buf = [0; 8];
@@ -687,7 +688,8 @@ impl Scalar {
                 )
             })
     }
-    fn write_raw<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+    /// Write raw bytes.
+    pub fn write_raw<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         for limb in self.0.iter() {
             writer.write_all(&limb.to_le_bytes())?;
         }
