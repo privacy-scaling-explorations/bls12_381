@@ -15,6 +15,7 @@ use ff::{FieldBits, PrimeFieldBits};
 
 use crate::util::{adc, mac, sbb};
 extern crate std;
+use alloc::vec::Vec;
 /// Represents an element of the scalar field $\mathbb{F}_q$ of the BLS12-381 elliptic
 /// curve construction.
 // The internal representation of this type is four 64-bit unsigned
@@ -668,6 +669,39 @@ impl Scalar {
         let (_, borrow) = sbb(x[2], y[2], borrow);
         let (_, borrow) = sbb(x[3], y[3], borrow);
         borrow >> 63 == 1
+    }
+
+    /// From raw bytes unchecked
+    pub fn from_raw_bytes_unchecked(bytes: &[u8]) -> Self {
+        debug_assert_eq!(bytes.len(), 32);
+        let inner =
+            [0, 8, 16, 24].map(|i| u64::from_le_bytes(bytes[i..i + 8].try_into().unwrap()));
+        Self(inner)
+    }
+    /// From raw bytes
+    fn from_raw_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != 32 {
+            return None;
+        }
+        let elt = Self::from_raw_bytes_unchecked(bytes);
+        Self::is_less_than(&elt.0, &MODULUS.0).then(|| elt)
+    }
+    /// To raw bytes
+    fn to_raw_bytes(&self) -> Vec<u8> {
+        let mut res = Vec::with_capacity(32);
+        for limb in self.0.iter() {
+            res.extend_from_slice(&limb.to_le_bytes());
+        }
+        res
+    }
+    /// Read raw unchecked
+    fn read_raw_unchecked<R: std::io::Read>(reader: &mut R) -> Self {
+        let inner = [(); 4].map(|_| {
+            let mut buf = [0; 8];
+            reader.read_exact(&mut buf).unwrap();
+            u64::from_le_bytes(buf)
+        });
+        Self(inner)
     }
 
     /// Read raw bytes.
