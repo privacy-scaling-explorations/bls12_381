@@ -14,7 +14,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 use ff::{FieldBits, PrimeFieldBits};
 
 use crate::util::{adc, mac, sbb};
-
+extern crate std;
 /// Represents an element of the scalar field $\mathbb{F}_q$ of the BLS12-381 elliptic
 /// curve construction.
 // The internal representation of this type is four 64-bit unsigned
@@ -659,6 +659,39 @@ impl Scalar {
     #[inline]
     pub const fn size() -> usize {
         32
+    }
+
+    #[inline(always)]
+    const fn is_less_than(x: &[u64; 4], y: &[u64; 4]) -> bool {
+        let (_, borrow) = sbb(x[0], y[0], 0);
+        let (_, borrow) = sbb(x[1], y[1], borrow);
+        let (_, borrow) = sbb(x[2], y[2], borrow);
+        let (_, borrow) = sbb(x[3], y[3], borrow);
+        borrow >> 63 == 1
+    }
+
+    fn read_raw<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut inner = [0u64; 4];
+        for limb in inner.iter_mut() {
+            let mut buf = [0; 8];
+            reader.read_exact(&mut buf)?;
+            *limb = u64::from_le_bytes(buf);
+        }
+        let elt = Self(inner);
+        Self::is_less_than(&elt.0, &MODULUS.0)
+            .then(|| elt)
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "input number is not less than field modulus",
+                )
+            })
+    }
+    fn write_raw<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        for limb in self.0.iter() {
+            writer.write_all(&limb.to_le_bytes())?;
+        }
+        Ok(())
     }
 }
 
