@@ -654,6 +654,12 @@ impl Scalar {
 
         Scalar([d0 & mask, d1 & mask, d2 & mask, d3 & mask])
     }
+
+    /// Size of the field
+    #[inline]
+    pub const fn size() -> usize {
+        32
+    }
 }
 
 impl From<Scalar> for [u8; 32] {
