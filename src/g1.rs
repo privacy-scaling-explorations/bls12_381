@@ -13,6 +13,9 @@ use group::{
 };
 use rand_core::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
+use alloc::vec::Vec;
+use std::io::Read;
+use std::io::Write;
 
 #[cfg(feature = "alloc")]
 use group::WnafGroup;
@@ -1893,4 +1896,46 @@ fn test_commutative_scalar_subgroup_multiplication() {
     // By value.
     assert_eq!(g1_p * a, a * g1_p);
     assert_eq!(g1_a * a, a * g1_a);
+}
+
+
+impl crate::serde::SerdeObject for G1Affine {
+    /// The purpose of unchecked functions is to read the internal memory representation
+    /// of a type from bytes as quickly as possible. No sanitization checks are performed
+    /// to ensure the bytes represent a valid object. As such this function should only be
+    /// used internally as an extension of machine memory. It should not be used to deserialize
+    /// externally provided data.
+    fn from_raw_bytes_unchecked(bytes: &[u8]) -> Self {
+        G1Affine::from_compressed(bytes.try_into().unwrap()).unwrap()
+    }
+    fn from_raw_bytes(bytes: &[u8]) -> Option<Self> {
+        Some(G1Affine::from_compressed(bytes.try_into().unwrap()).unwrap())
+    }
+
+    fn to_raw_bytes(&self) -> Vec<u8> {
+        self.to_compressed().into()
+    }
+
+    /// The purpose of unchecked functions is to read the internal memory representation
+    /// of a type from disk as quickly as possible. No sanitization checks are performed
+    /// to ensure the bytes represent a valid object. This function should only be used
+    /// internally when some machine state cannot be kept in memory (e.g., between runs)
+    /// and needs to be reloaded as quickly as possible.
+    fn read_raw_unchecked<R: ::std::io::Read>(reader: &mut R) -> Self {
+        let mut buf = [0; 48];
+        reader.read_exact(&mut buf).unwrap();
+        G1Affine::from_compressed(&buf).unwrap()
+
+    }
+    fn read_raw<R: Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut buf = [0; 48];
+        reader.read_exact(&mut buf).unwrap();
+        Ok(G1Affine::from_compressed(&buf).unwrap())
+    }
+
+    fn write_raw<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(&self.to_compressed())?;
+        Ok(())
+
+    }
 }

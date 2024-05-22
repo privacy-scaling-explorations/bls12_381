@@ -7,14 +7,15 @@ use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use rand_core::RngCore;
 
-use ff::{Field, PrimeField, WithSmallOrderMulGroup};
+use ff::{Field, PrimeField, WithSmallOrderMulGroup, FromUniformBytes};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 #[cfg(feature = "bits")]
 use ff::{FieldBits, PrimeFieldBits};
 
 use crate::util::{adc, mac, sbb};
-
+extern crate std;
+use alloc::vec::Vec;
 /// Represents an element of the scalar field $\mathbb{F}_q$ of the BLS12-381 elliptic
 /// curve construction.
 // The internal representation of this type is four 64-bit unsigned
@@ -654,6 +655,80 @@ impl Scalar {
 
         Scalar([d0 & mask, d1 & mask, d2 & mask, d3 & mask])
     }
+
+    /// Size of the field
+    #[inline]
+    pub const fn size() -> usize {
+        32
+    }
+
+    #[inline(always)]
+    const fn is_less_than(x: &[u64; 4], y: &[u64; 4]) -> bool {
+        let (_, borrow) = sbb(x[0], y[0], 0);
+        let (_, borrow) = sbb(x[1], y[1], borrow);
+        let (_, borrow) = sbb(x[2], y[2], borrow);
+        let (_, borrow) = sbb(x[3], y[3], borrow);
+        borrow >> 63 == 1
+    }
+
+    /// From raw bytes unchecked
+    pub fn from_raw_bytes_unchecked(bytes: &[u8]) -> Self {
+        debug_assert_eq!(bytes.len(), 32);
+        let inner =
+            [0, 8, 16, 24].map(|i| u64::from_le_bytes(bytes[i..i + 8].try_into().unwrap()));
+        Self(inner)
+    }
+    /// From raw bytes
+    pub fn from_raw_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != 32 {
+            return None;
+        }
+        let elt = Self::from_raw_bytes_unchecked(bytes);
+        Self::is_less_than(&elt.0, &MODULUS.0).then(|| elt)
+    }
+    /// To raw bytes
+    pub fn to_raw_bytes(&self) -> Vec<u8> {
+        let mut res = Vec::with_capacity(32);
+        for limb in self.0.iter() {
+            res.extend_from_slice(&limb.to_le_bytes());
+        }
+        res
+    }
+    /// Read raw unchecked
+    pub fn read_raw_unchecked<R: std::io::Read>(reader: &mut R) -> Self {
+        let inner = [(); 4].map(|_| {
+            let mut buf = [0; 8];
+            reader.read_exact(&mut buf).unwrap();
+            u64::from_le_bytes(buf)
+        });
+        Self(inner)
+    }
+
+    /// Read raw bytes.
+    pub fn read_raw<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        let mut inner = [0u64; 4];
+        for limb in inner.iter_mut() {
+            let mut buf = [0; 8];
+            reader.read_exact(&mut buf)?;
+            *limb = u64::from_le_bytes(buf);
+        }
+        let elt = Self(inner);
+        Self::is_less_than(&elt.0, &MODULUS.0)
+            .then(|| elt)
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "input number is not less than field modulus",
+                )
+            })
+    }
+    /// Write raw bytes.
+    pub fn write_raw<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        for limb in self.0.iter() {
+            writer.write_all(&limb.to_le_bytes())?;
+        }
+        Ok(())
+    }
 }
 
 impl From<Scalar> for [u8; 32] {
@@ -711,6 +786,23 @@ impl Field for Scalar {
 
     fn is_zero_vartime(&self) -> bool {
         self.0 == Self::zero().0
+    }
+}
+
+impl FromUniformBytes<64> for Scalar {
+    /// Converts a 512-bit little endian integer into
+    /// an `Fq` by reducing by the modulus.
+    fn from_uniform_bytes(bytes: &[u8; 64]) -> Self {
+        Self::from_u512([
+            u64::from_le_bytes(bytes[0..8].try_into().unwrap()),
+            u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
+            u64::from_le_bytes(bytes[16..24].try_into().unwrap()),
+            u64::from_le_bytes(bytes[24..32].try_into().unwrap()),
+            u64::from_le_bytes(bytes[32..40].try_into().unwrap()),
+            u64::from_le_bytes(bytes[40..48].try_into().unwrap()),
+            u64::from_le_bytes(bytes[48..56].try_into().unwrap()),
+            u64::from_le_bytes(bytes[56..64].try_into().unwrap()),
+        ])
     }
 }
 
